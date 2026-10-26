@@ -1,0 +1,3 @@
+#include "../include/AgujeroDeGusano.hpp"
+
+// ...implementación futura...
