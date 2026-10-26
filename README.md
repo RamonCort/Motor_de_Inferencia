@@ -1,6 +1,6 @@
-# 🚀 Asteroids - Juego Espacial Retro
+# Motor de Inferencias
 
-> Un emocionante juego de Asteroids desarrollado en C++ con SFML, inspirado en el clásico arcade de los años 80
+> Nuevo proyecto C++ basado en la estructura modular de Asteroids.
 
 [![C++](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://isocpp.org/)
 [![SFML](https://img.shields.io/badge/SFML-2.5+-green.svg)](https://www.sfml-dev.org/)
