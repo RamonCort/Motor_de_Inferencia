@@ -116,6 +116,13 @@ mingw32-make test
 El `Makefile` utiliza C++17, advertencias estrictas y compila todos los
 módulos del motor antes de enlazar la aplicación gráfica o la consola.
 
+La pestaña **Entrada de datos** permite guardar el caso actual con un nombre.
+Los ejemplos se almacenan en `assets/examples.txt`, pueden cargarse después
+desde la lista de ejemplos guardados y se actualizan si se vuelve a usar el
+mismo nombre. El archivo usa un formato interno de texto y conserva las
+premisas y la consulta tal como fueron introducidas. Para que las rutas
+relativas funcionen, inicia la GUI desde la raíz del proyecto.
+
 ## Compilación con CMake
 
 Con Visual Studio:

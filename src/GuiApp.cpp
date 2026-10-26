@@ -22,6 +22,8 @@
 #include <cstdint>
 #include <fstream>
 #include <functional>
+#include <iomanip>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -134,6 +136,93 @@ struct InputBuffer {
         return data.data();
     }
 };
+
+struct SavedExample {
+    std::string name;
+    std::vector<std::string> premises;
+    std::string query;
+};
+
+constexpr const char* kExamplesPath = "assets/examples.txt";
+
+bool loadSavedExamples(std::vector<SavedExample>& examples,
+                        std::string& error) {
+    examples.clear();
+    std::ifstream input(kExamplesPath);
+    if (!input) {
+        return true;
+    }
+
+    std::string line;
+    SavedExample current;
+    bool insideExample = false;
+    while (std::getline(input, line)) {
+        std::istringstream parser(line);
+        std::string tag;
+        parser >> tag;
+        if (tag == "EXAMPLE") {
+            if (insideExample) {
+                error = "El archivo de ejemplos contiene un bloque incompleto.";
+                return false;
+            }
+            current = {};
+            if (!(parser >> std::quoted(current.name)) || current.name.empty()) {
+                error = "No se pudo leer el nombre de un ejemplo guardado.";
+                return false;
+            }
+            insideExample = true;
+        } else if (tag == "PREMISE" && insideExample) {
+            std::string premise;
+            if (!(parser >> std::quoted(premise))) {
+                error = "No se pudo leer una premisa guardada.";
+                return false;
+            }
+            current.premises.push_back(premise);
+        } else if (tag == "QUERY" && insideExample) {
+            if (!(parser >> std::quoted(current.query))) {
+                error = "No se pudo leer la consulta guardada.";
+                return false;
+            }
+        } else if (tag == "END" && insideExample) {
+            if (current.premises.empty()) {
+                error = "Un ejemplo guardado no contiene premisas.";
+                return false;
+            }
+            examples.push_back(current);
+            insideExample = false;
+        } else if (!line.empty()) {
+            error = "Formato desconocido en el archivo de ejemplos.";
+            return false;
+        }
+    }
+    if (insideExample) {
+        error = "El archivo de ejemplos termina con un bloque incompleto.";
+        return false;
+    }
+    return true;
+}
+
+bool saveSavedExamples(const std::vector<SavedExample>& examples,
+                        std::string& error) {
+    std::ofstream output(kExamplesPath, std::ios::trunc);
+    if (!output) {
+        error = "No se pudo abrir el archivo de ejemplos para escritura.";
+        return false;
+    }
+    for (const auto& example : examples) {
+        output << "EXAMPLE " << std::quoted(example.name) << '\n';
+        for (const auto& premise : example.premises) {
+            output << "PREMISE " << std::quoted(premise) << '\n';
+        }
+        output << "QUERY " << std::quoted(example.query) << '\n';
+        output << "END\n";
+    }
+    if (!output) {
+        error = "No se pudo guardar el archivo de ejemplos.";
+        return false;
+    }
+    return true;
+}
 
 void drawFormula(const std::string& title, const Formula::Ptr& formula) {
     ImGui::TextWrapped("%s: %s", title.c_str(), formula->toString().c_str());
@@ -461,6 +550,8 @@ class GuiState {
 public:
     std::vector<InputBuffer> premiseInputs{InputBuffer{}};
     InputBuffer queryInput;
+    InputBuffer exampleName;
+    std::vector<SavedExample> savedExamples;
     NaturalLanguageParser parser;
     std::vector<Formula::Ptr> premises;
     Formula::Ptr query;
@@ -476,6 +567,79 @@ public:
     ModelSearchResult models;
     EntailmentResult entailment;
     bool analyzed{false};
+
+    void loadExamples() {
+        std::string loadError;
+        if (!loadSavedExamples(savedExamples, loadError)) {
+            error = loadError;
+        }
+    }
+
+    void saveCurrentExample() {
+        const std::string name = exampleName.value();
+        if (name.empty()) {
+            error = "Escribe un nombre para el ejemplo.";
+            return;
+        }
+        SavedExample example;
+        example.name = name;
+        for (const auto& input : premiseInputs) {
+            const std::string premise = input.value();
+            if (!premise.empty()) {
+                example.premises.push_back(premise);
+            }
+        }
+        if (example.premises.empty()) {
+            error = "Agrega al menos una premisa antes de guardar.";
+            return;
+        }
+        example.query = queryInput.value();
+
+        const auto existing = std::find_if(
+            savedExamples.begin(), savedExamples.end(),
+            [&name](const SavedExample& item) { return item.name == name; });
+        if (existing != savedExamples.end()) {
+            *existing = example;
+        } else {
+            savedExamples.push_back(example);
+        }
+
+        std::string saveError;
+        if (!saveSavedExamples(savedExamples, saveError)) {
+            error = saveError;
+            return;
+        }
+        error.clear();
+        status = "Ejemplo guardado.";
+    }
+
+    void loadExample(const SavedExample& example) {
+        premiseInputs.clear();
+        for (const auto& premise : example.premises) {
+            premiseInputs.emplace_back(premise);
+        }
+        if (premiseInputs.empty()) {
+            premiseInputs.emplace_back();
+        }
+        queryInput = InputBuffer(example.query);
+        exampleName = InputBuffer(example.name);
+        clearResults();
+        status = "Ejemplo cargado.";
+    }
+
+    void deleteExample(std::size_t index) {
+        if (index >= savedExamples.size()) {
+            return;
+        }
+        savedExamples.erase(savedExamples.begin() +
+                            static_cast<std::ptrdiff_t>(index));
+        std::string saveError;
+        if (!saveSavedExamples(savedExamples, saveError)) {
+            error = saveError;
+            return;
+        }
+        status = "Ejemplo eliminado.";
+    }
 
     void clearResults() {
         premises.clear();
@@ -607,6 +771,7 @@ int GuiApp::run() {
 
     GuiState state;
     AudioPlayer audio;
+    state.loadExamples();
     int activeTab = 0;
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -696,6 +861,44 @@ int GuiApp::run() {
                 if (ImGui::Button("Cargar ejemplo")) {
                     audio.playButton();
                     state.loadExample();
+                }
+                ImGui::Separator();
+                ImGui::TextUnformatted("Ejemplos guardados");
+                ImGui::InputText("Nombre del ejemplo",
+                                 state.exampleName.data.data(),
+                                 state.exampleName.data.size());
+                if (ImGui::Button("Guardar ejemplo actual")) {
+                    audio.playButton();
+                    state.saveCurrentExample();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Actualizar lista")) {
+                    audio.playButton();
+                    state.loadExamples();
+                }
+                if (state.savedExamples.empty()) {
+                    ImGui::TextUnformatted("No hay ejemplos guardados.");
+                } else {
+                    for (std::size_t index = 0;
+                         index < state.savedExamples.size(); ++index) {
+                        const auto& example = state.savedExamples[index];
+                        ImGui::PushID(static_cast<int>(index));
+                        ImGui::Text("%s (%zu premisa%s)",
+                                   example.name.c_str(),
+                                   example.premises.size(),
+                                   example.premises.size() == 1 ? "" : "s");
+                        ImGui::SameLine();
+                        if (ImGui::SmallButton("Cargar")) {
+                            audio.playButton();
+                            state.loadExample(example);
+                        }
+                        ImGui::SameLine();
+                        if (ImGui::SmallButton("Eliminar")) {
+                            audio.playButton();
+                            state.deleteExample(index);
+                        }
+                        ImGui::PopID();
+                    }
                 }
                 if (!state.error.empty()) {
                     ImGui::TextColored(

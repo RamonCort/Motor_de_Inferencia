@@ -1,0 +1,11 @@
+EXAMPLE "Arcoiris"
+PREMISE "si llueve entonces llevo paraguas"
+PREMISE "si hay sol y esta lloviendo entonces hay un arcoiris"
+PREMISE "esta lloviendo y hay sol"
+QUERY "hay un arcoiris "
+END
+EXAMPLE "Tienda"
+PREMISE "si es de noche entonces la tienda esta cerrada"
+PREMISE "es de dia y la tineda esta abierta"
+QUERY "la tienda esta cerrada"
+END
