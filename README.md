@@ -273,3 +273,59 @@ tests/     Pruebas automatizadas ejecutadas por Make o CTest.
 docs/      Documentación adicional.
 assets/    Recursos opcionales.
 ```
+
+## Evidencia visual del proyecto
+
+### Imagen 1 - Interfaz inicial
+
+![Interfaz inicial](docs/images/Cap1.jpg)
+
+Esta imagen muestra la interfaz principal del motor, con las pestañas de navegación, los controles de entrada y la lista de ejemplos guardados.
+
+### Imagen 2 - Carga de premisas y consulta
+
+![Carga de premisas y consulta](docs/images/Cap2.jpg)
+
+En esta vista se observan varias premisas y una consulta introducidas en español. También demuestra que el sistema puede cargar un ejemplo guardado.
+
+### Imagen 3 - Análisis completado
+
+![Análisis completado](docs/images/Cap3.jpg)
+
+La interfaz confirma que el análisis terminó correctamente después de procesar las premisas y la consulta.
+
+### Imagen 4 - Átomos y fórmulas
+
+![Átomos y fórmulas](docs/images/Cap4.jpg)
+
+Esta pantalla presenta los símbolos asignados a las proposiciones atómicas, sus fórmulas y los valores del modelo calculado.
+
+### Imagen 5 - Tableau de premisas
+
+![Tableau de premisas](docs/images/Cap5.jpg)
+
+Aquí se visualiza el tableau semántico de las premisas, incluyendo nodos expandidos, reglas beta y la división de las ramas.
+
+### Imagen 6 - Ramas abiertas y cerradas
+
+![Ramas abiertas y cerradas](docs/images/Cap6.jpg)
+
+La imagen muestra el estado final de las ramas del tableau: las ramas cerradas aparecen en rojo y la rama abierta en verde, junto con sus nodos y fórmulas.
+
+### Imagen 7 - Tableau de la consulta
+
+![Tableau de la consulta](docs/images/Cap7.jpg)
+
+Esta vista corresponde al tableau construido con las premisas y la negación de la consulta, y permite inspeccionar su expansión y sus contradicciones.
+
+### Imagen 8 - Modelos y conclusión
+
+![Modelos y conclusión](docs/images/Cap8.jpg)
+
+El panel final informa la satisfacibilidad, los modelos encontrados y si la consulta se deduce de las premisas.
+
+## Video demostrativo
+
+[Ver video demostrativo](docs/video/Motor_de_inferencias.mp4)
+
+El video muestra el flujo de uso del motor de inferencias, desde la introducción de premisas y consultas hasta el análisis del tableau, los modelos y la conclusión. Sirve como demostración práctica del funcionamiento general de la aplicación.
