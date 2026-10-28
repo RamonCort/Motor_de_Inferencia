@@ -107,6 +107,20 @@ std::string literalKey(const Formula::Ptr& formula) {
     return (formula->connective() == Connective::Atom ? "+" : "-") + symbol;
 }
 
+std::map<std::string, bool> assignmentFor(const FormulaList& formulas) {
+    std::map<std::string, bool> assignment;
+    for (const auto& formula : formulas) {
+        if (!isLiteral(formula)) {
+            continue;
+        }
+        const std::string symbol = formula->connective() == Connective::Atom
+            ? formula->symbol()
+            : formula->left()->symbol();
+        assignment[symbol] = formula->connective() == Connective::Atom;
+    }
+    return assignment;
+}
+
 bool isClosed(const FormulaList& formulas, std::string& reason) {
     std::set<std::string> positive;
     std::set<std::string> negative;
@@ -166,6 +180,10 @@ void renderText(const std::shared_ptr<TableauNode>& node, std::string prefix,
            << stateName(node->state) << "]\n";
     for (const auto& formula : node->formulas) {
         output << prefix << "  " << formula->toString() << "\n";
+    }
+    if (!node->appliedFormula.empty()) {
+        output << prefix << "  Aplicada: " << node->appliedFormula
+               << " [OK]\n";
     }
     if (!node->expansion.empty()) {
         output << prefix << "  Regla: " << node->expansion << "\n";
@@ -252,7 +270,12 @@ void SemanticTableau::build() {
             node->state = TableauNodeState::Closed;
             node->closureReason = closureReason;
             history.push_back(closureReason);
-            branches_.push_back({node->formulas, false, std::move(history)});
+            TableauBranch branch;
+            branch.formulas = node->formulas;
+            branch.open = false;
+            branch.history = std::move(history);
+            branch.assignment = assignmentFor(node->formulas);
+            branches_.push_back(std::move(branch));
             return;
         }
 
@@ -262,7 +285,12 @@ void SemanticTableau::build() {
         if (candidate == node->formulas.end()) {
             node->state = TableauNodeState::Open;
             history.push_back("Rama abierta: no quedan expansiones.");
-            branches_.push_back({node->formulas, true, std::move(history)});
+            TableauBranch branch;
+            branch.formulas = node->formulas;
+            branch.open = true;
+            branch.history = std::move(history);
+            branch.assignment = assignmentFor(node->formulas);
+            branches_.push_back(std::move(branch));
             return;
         }
 
@@ -294,6 +322,7 @@ void SemanticTableau::build() {
         }
 
         node->state = TableauNodeState::Expanded;
+        node->appliedFormula = selected->toString();
         node->expansion = rule;
         history.push_back(rule);
         for (auto& formulas : alternatives) {
@@ -315,6 +344,20 @@ std::string SemanticTableau::toText() const {
     }
     std::ostringstream output;
     renderText(root_, {}, output);
+    output << "Ramas y asignaciones:\n";
+    for (std::size_t index = 0; index < branches_.size(); ++index) {
+        output << "  Rama " << index + 1 << (branches_[index].open
+            ? " [abierta]: " : " [cerrada]: ");
+        bool first = true;
+        for (const auto& [symbol, value] : branches_[index].assignment) {
+            if (!first) {
+                output << ", ";
+            }
+            first = false;
+            output << symbol << "=" << (value ? "V" : "F");
+        }
+        output << "\n";
+    }
     return output.str();
 }
 

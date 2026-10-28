@@ -35,6 +35,36 @@ void test_atoms() {
     assert(extracted[1].symbol == "S");
     assert(extractor.atoms().size() == 4);
 
+    for (int index = 0; index < 34; ++index) {
+        extractor.registerAtom("proposicion adicional " +
+                               std::to_string(index));
+    }
+    assert(extractor.symbolFor("proposicion adicional 0") == "T");
+    assert(extractor.symbolFor("proposicion adicional 10") == "D");
+    assert(extractor.symbolFor("proposicion adicional 11") == "E");
+    assert(extractor.symbolFor("proposicion adicional 33") == "AA");
+
+    inferencias::AtomExtractor equivalentExtractor;
+    const auto walking = equivalentExtractor.registerAtom("camino");
+    const auto walkingNow = equivalentExtractor.registerAtom(
+        "Estoy caminando.");
+    assert(walkingNow.symbol == walking.symbol);
+    assert(walkingNow.id == walking.id);
+        assert(equivalentExtractor.registerAtom("Voy a pie").symbol ==
+            walking.symbol);
+    assert(equivalentExtractor.atoms().size() == 1);
+
+        inferencias::AtomExtractor activityExtractor;
+        const auto running = activityExtractor.registerAtom("corro");
+        assert(activityExtractor.registerAtom("Estoy corriendo").symbol ==
+            running.symbol);
+        const auto weather = activityExtractor.registerAtom("Hace frío");
+        assert(activityExtractor.registerAtom("Está frío").symbol ==
+            weather.symbol);
+        const auto unrelated = activityExtractor.registerAtom("Tengo hambre");
+        assert(activityExtractor.registerAtom("Quiero comer").symbol !=
+            unrelated.symbol);
+
     bool rejected = false;
     try {
         extractor.registerAtom("   ... !!! ");

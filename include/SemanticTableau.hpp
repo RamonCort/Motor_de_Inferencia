@@ -3,6 +3,7 @@
 
 #include "Formula.hpp"
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -20,6 +21,7 @@ struct TableauNode {
     std::size_t id{0};
     std::vector<Formula::Ptr> formulas;
     TableauNodeState state{TableauNodeState::Pending};
+    std::string appliedFormula;
     std::string expansion;
     std::string closureReason;
     std::vector<std::shared_ptr<TableauNode>> children;
@@ -29,6 +31,7 @@ struct TableauBranch {
     std::vector<Formula::Ptr> formulas;
     bool open{true};
     std::vector<std::string> history;
+    std::map<std::string, bool> assignment;
 };
 
 class SemanticTableau {

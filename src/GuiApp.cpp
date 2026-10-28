@@ -248,6 +248,10 @@ void drawTableauNode(const std::shared_ptr<TableauNode>& node) {
     for (const auto& formula : node->formulas) {
         ImGui::BulletText("%s", formula->toString().c_str());
     }
+    if (!node->appliedFormula.empty()) {
+        ImGui::TextWrapped("Aplicada: %s [OK]",
+                           node->appliedFormula.c_str());
+    }
     if (!node->expansion.empty()) {
         ImGui::TextWrapped("Regla: %s", node->expansion.c_str());
     }
@@ -315,6 +319,30 @@ void drawTableauSummary(const std::shared_ptr<TableauNode>& root) {
     ImGui::SameLine();
     ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f),
                       "Ramas cerradas: %zu", closedBranches);
+}
+
+void drawBranchAssignments(const SemanticTableau& tableau) {
+    ImGui::TextUnformatted("Asignaciones de las ramas");
+    const auto& branches = tableau.branches();
+    for (std::size_t index = 0; index < branches.size(); ++index) {
+        const auto& branch = branches[index];
+        ImGui::Text("Rama %zu [%s]", index + 1,
+                    branch.open ? "abierta" : "cerrada");
+        if (branch.assignment.empty()) {
+            ImGui::SameLine();
+            ImGui::TextUnformatted("sin literales");
+            continue;
+        }
+        ImGui::SameLine();
+        bool first = true;
+        for (const auto& [symbol, value] : branch.assignment) {
+            if (!first) {
+                ImGui::SameLine();
+            }
+            first = false;
+            ImGui::Text("%s=%s", symbol.c_str(), value ? "V" : "F");
+        }
+    }
 }
 
 void drawTableauGraph(const std::shared_ptr<TableauNode>& root,
@@ -666,7 +694,7 @@ public:
         clearResults();
     }
 
-    void analyze() {
+    void analyzeModel() {
         clearResults();
         parser = NaturalLanguageParser{};
         for (const auto& input : premiseInputs) {
@@ -679,15 +707,6 @@ public:
             premiseTexts.push_back(text);
             premises.push_back(result.formula);
         }
-        const std::string queryText = queryInput.value();
-        if (!queryText.empty()) {
-            const ParseResult result = parser.parse(queryText);
-            if (!result.ok()) {
-                error = "Error en la consulta: " + result.error;
-                return;
-            }
-            query = result.formula;
-        }
 
         for (const auto& premise : premises) {
             premiseTableau.addPremise(premise);
@@ -699,24 +718,51 @@ public:
         models = evaluator.enumerateModels(premises, kMaxAssignments);
         const ModelReporter reporter;
         report = reporter.formatModels(models, parser.atomExtractor().atoms());
-
-        if (query) {
-            queryTableau = SemanticTableau{};
-            for (const auto& premise : premises) {
-                queryTableau.addPremise(premise);
-            }
-            queryTableau.addPremise(
-                Formula::unary(Connective::Not, query));
-            queryTableau.build();
-            queryTableauText = queryTableau.toText();
-            writeDot("tableau_consulta.dot", queryTableau.toDot());
-            entailment = evaluator.checkEntailment(
-                premises, *query, kMaxAssignments);
-            report += reporter.formatEntailment(
-                entailment, parser.atomExtractor().atoms());
-        }
         analyzed = true;
-        status = "Analisis completado.";
+        status = "Modelo analizado. Ahora puede analizar una consulta en el arbol semantico.";
+    }
+
+    void analyzeQuery() {
+        error.clear();
+        query.reset();
+        queryTableau.clear();
+        queryTableauText.clear();
+        entailment = {};
+        if (!analyzed) {
+            error = "Analice primero el modelo de premisas.";
+            return;
+        }
+
+        const std::string queryText = queryInput.value();
+        if (queryText.empty()) {
+            error = "Escriba una consulta antes de analizarla.";
+            return;
+        }
+        const ParseResult result = parser.parse(queryText);
+        if (!result.ok()) {
+            error = "Error en la consulta: " + result.error;
+            return;
+        }
+        query = result.formula;
+
+        for (const auto& premise : premises) {
+            queryTableau.addPremise(premise);
+        }
+        queryTableau.addPremise(
+            Formula::unary(Connective::Not, query));
+        queryTableau.build();
+        queryTableauText = queryTableau.toText();
+        writeDot("tableau_consulta.dot", queryTableau.toDot());
+
+        const Evaluator evaluator;
+        const ModelReporter reporter;
+        entailment = evaluator.checkEntailment(
+            premises, *query, kMaxAssignments);
+        report = reporter.formatModels(
+            models, parser.atomExtractor().atoms());
+        report += reporter.formatEntailment(
+            entailment, parser.atomExtractor().atoms());
+        status = "Consulta analizada y tableau actualizado.";
     }
 };
 
@@ -844,11 +890,9 @@ int GuiApp::run() {
                         state.premiseInputs[index].data.size());
                     ImGui::PopID();
                 }
-                ImGui::InputText("Consulta", state.queryInput.data.data(),
-                                 state.queryInput.data.size());
-                if (ImGui::Button("Analizar")) {
+                if (ImGui::Button("Analizar modelo")) {
                     audio.playAnalyze();
-                    state.analyze();
+                    state.analyzeModel();
                 }
                 ImGui::SameLine();
                 if (ImGui::Button("Limpiar")) {
@@ -958,7 +1002,7 @@ int GuiApp::run() {
                     for (std::size_t index = 0;
                          index < state.premises.size(); ++index) {
                         drawFormula(
-                            "Premisa " + std::to_string(index + 1),
+                            "R" + std::to_string(index + 1),
                             state.premises[index]);
                     }
                     if (state.query) {
@@ -1000,9 +1044,23 @@ int GuiApp::run() {
                     }
                     ImGui::TextUnformatted(
                         "Rueda: zoom | Arrastre central: desplazar");
+                    ImGui::Separator();
+                    ImGui::TextUnformatted(
+                        "Consulta sobre el modelo cargado");
+                    ImGui::InputText("Consulta", state.queryInput.data.data(),
+                                     state.queryInput.data.size());
+                    if (ImGui::Button("Analizar consulta")) {
+                        audio.playAnalyze();
+                        state.analyzeQuery();
+                    }
+                    if (!state.query) {
+                        ImGui::TextUnformatted(
+                            "El tableau de consulta aparecera aqui despues del analisis.");
+                    }
                     drawTableauGraph(state.premiseTableau.root(),
                                      "premise_tableau_graph",
                                      state.premiseGraphView);
+                    drawBranchAssignments(state.premiseTableau);
                     ImGui::Separator();
                     ImGui::TextUnformatted("Detalle textual");
                     drawTableauNode(state.premiseTableau.root());

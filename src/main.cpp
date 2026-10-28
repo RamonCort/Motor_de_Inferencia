@@ -94,7 +94,7 @@ void printFormulas(const std::vector<std::string>& texts,
                    const std::vector<inferencias::Formula::Ptr>& formulas) {
     std::cout << "\nPASO 3. FORMULAS LOGICAS\n";
     for (std::size_t index = 0; index < formulas.size(); ++index) {
-        std::cout << "  " << index + 1 << ". " << texts[index] << "\n"
+        std::cout << "  R" << index + 1 << ": " << texts[index] << "\n"
                   << "     " << formulas[index]->toString() << "\n";
     }
 }

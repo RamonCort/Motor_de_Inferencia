@@ -100,7 +100,8 @@ pueden cargarse, la aplicación conserva el fondo y los conectores generados
 por ImGui sin detener el análisis lógico.
 
 La GUI reproduce `assets/music/Boton.mp3` al pulsar los botones generales,
-`assets/music/Analisar.mp3` al pulsar **Analizar** y
+`assets/music/Analisar.mp3` al pulsar **Analizar modelo** o **Analizar
+consulta** y
 `assets/music/Transicion.mp3` al cambiar entre las pestañas **Entrada de
 datos**, **Atomos y formulas**, **Arbol semantico** y **Modelos y
 conclusion**. Estos audios se reproducen
@@ -116,12 +117,16 @@ mingw32-make test
 El `Makefile` utiliza C++17, advertencias estrictas y compila todos los
 módulos del motor antes de enlazar la aplicación gráfica o la consola.
 
-La pestaña **Entrada de datos** permite guardar el caso actual con un nombre.
-Los ejemplos se almacenan en `assets/examples.txt`, pueden cargarse después
-desde la lista de ejemplos guardados y se actualizan si se vuelve a usar el
-mismo nombre. El archivo usa un formato interno de texto y conserva las
-premisas y la consulta tal como fueron introducidas. Para que las rutas
-relativas funcionen, inicia la GUI desde la raíz del proyecto.
+La pestaña **Entrada de datos** carga las premisas y permite analizar primero
+el modelo completo. Después, en **Arbol semantico**, se escribe la consulta y
+se pulsa **Analizar consulta**; esa operación construye el tableau de las
+premisas junto con la negación de la consulta y actualiza la deducción sin
+recalcular la base de premisas. La pestaña también permite guardar el caso
+actual con un nombre. Los ejemplos se almacenan en `assets/examples.txt`,
+pueden cargarse después desde la lista de ejemplos guardados y se actualizan
+si se vuelve a usar el mismo nombre. El archivo conserva las premisas y la
+consulta tal como fueron introducidas. Para que las rutas relativas
+funcionen, inicia la GUI desde la raíz del proyecto.
 
 ## Compilación con CMake
 
@@ -194,10 +199,16 @@ esta lloviendo
 está lloviendo
 ```
 
-No se hace equivalencia semántica general entre frases parecidas. La
-normalización de átomos elimina espacios innecesarios, convierte mayúsculas
-ASCII, cubre mayúsculas acentuadas españolas habituales y retira puntuación
-final común.
+No se hace equivalencia semántica general entre frases parecidas. Además de
+la normalización de espacios, mayúsculas, acentos y puntuación final, el
+extractor conserva un registro explícito de equivalencias verificadas. Por
+ejemplo, `camino` y `estoy caminando` reutilizan el mismo átomo, al igual que
+`llueve` y `está lloviendo`. También se incluyen equivalencias directas de
+actividades, clima, estados emocionales, comunicación y algunas acciones
+cotidianas. Se excluyen expresiones de intención, causa, consecuencia o
+significado más amplio; por ejemplo, `tengo hambre` y `quiero comer` siguen
+siendo átomos distintos. Las frases no incluidas en el registro conservan
+átomos diferentes para evitar deducciones incorrectas.
 
 ## Ejemplo de uso
 
@@ -255,7 +266,8 @@ demostración basada en premisas consistentes.
 ## Limitaciones conocidas
 
 - No es un analizador de lenguaje natural libre.
-- No reconoce sinónimos generales ni equivalencias lingüísticas arbitrarias.
+- No reconoce sinónimos generales ni equivalencias lingüísticas arbitrarias;
+  solo aplica las equivalencias explícitas documentadas.
 - El soporte de Unicode se limita a comparaciones UTF-8 habituales del español;
   no implementa `case-folding` Unicode completo.
 - La enumeración de modelos crece exponencialmente.

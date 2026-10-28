@@ -17,6 +17,7 @@ void test_tableau() {
     assert(tableau.isSatisfiable());
     assert(tableau.branches().size() == 1);
     assert(tableau.branches()[0].open);
+    assert(tableau.branches()[0].assignment.at("P"));
     assert(!tableau.branches()[0].history.empty());
     assert(tableau.toDot().find("digraph") != std::string::npos);
     assert(tableau.toDot().find("P") != std::string::npos);
@@ -61,6 +62,35 @@ void test_tableau() {
     negatedConjunction.build();
     assert(negatedConjunction.isSatisfiable());
     assert(negatedConjunction.branches().size() == 2);
+
+    inferencias::SemanticTableau negatedDisjunction;
+    negatedDisjunction.addPremise(Formula::unary(
+        Connective::Not, Formula::binary(Connective::Or, p, q)));
+    negatedDisjunction.build();
+    assert(negatedDisjunction.branches().size() == 1);
+    assert(negatedDisjunction.branches()[0].assignment.at("P") == false);
+    assert(negatedDisjunction.branches()[0].assignment.at("Q") == false);
+
+    inferencias::SemanticTableau negatedImplication;
+    negatedImplication.addPremise(Formula::unary(
+        Connective::Not, Formula::binary(Connective::Implies, p, q)));
+    negatedImplication.build();
+    assert(negatedImplication.branches().size() == 1);
+    assert(negatedImplication.branches()[0].assignment.at("P"));
+    assert(negatedImplication.branches()[0].assignment.at("Q") == false);
+
+    inferencias::SemanticTableau doubleNegation;
+    doubleNegation.addPremise(Formula::unary(
+        Connective::Not, Formula::unary(Connective::Not, p)));
+    doubleNegation.build();
+    assert(doubleNegation.branches().size() == 1);
+    assert(doubleNegation.branches()[0].assignment.at("P"));
+
+    inferencias::SemanticTableau negatedBiconditional;
+    negatedBiconditional.addPremise(Formula::unary(
+        Connective::Not, Formula::binary(Connective::Iff, p, q)));
+    negatedBiconditional.build();
+    assert(negatedBiconditional.branches().size() == 2);
 
     inferencias::SemanticTableau biconditional;
     biconditional.addPremise(Formula::binary(Connective::Iff, p, q));
